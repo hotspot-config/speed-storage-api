@@ -34,50 +34,48 @@ function writeData(data) {
     }
 }
 
-// الحصول على IP العميل
-function getClientIP(req) {
-    return req.headers['x-forwarded-for']?.split(',')[0] ||
-        req.headers['x-real-ip'] ||
-        req.connection?.remoteAddress ||
-        req.ip ||
-        'unknown';
-}
-
-// GET - استرجاع السرعة
+// GET - استرجاع السرعة (بناءً على username)
 app.get('/speed', (req, res) => {
-    const clientIP = getClientIP(req);
+    const username = req.query.username;
+
+    if (!username) {
+        return res.json({
+            success: false,
+            error: 'Missing username parameter'
+        });
+    }
+
     const data = readData();
 
-    if (data[clientIP]) {
+    if (data[username]) {
         res.json({
             success: true,
-            speed_id: data[clientIP].speed_id,
-            speed_name: data[clientIP].speed_name,
-            ip: clientIP
+            speed_id: data[username].speed_id,
+            speed_name: data[username].speed_name,
+            username: username
         });
     } else {
         res.json({
             success: false,
-            error: 'No speed found for this IP',
-            ip: clientIP
+            error: 'No speed found for this user',
+            username: username
         });
     }
 });
 
-// POST - حفظ السرعة
+// POST - حفظ السرعة (بناءً على username)
 app.post('/speed', (req, res) => {
-    const clientIP = getClientIP(req);
-    const { speed_id, speed_name } = req.body;
+    const { username, speed_id, speed_name } = req.body;
 
-    if (!speed_id || !speed_name) {
+    if (!username || !speed_id || !speed_name) {
         return res.json({
             success: false,
-            error: 'Missing speed_id or speed_name'
+            error: 'Missing username, speed_id or speed_name'
         });
     }
 
     const data = readData();
-    data[clientIP] = {
+    data[username] = {
         speed_id,
         speed_name,
         timestamp: Date.now()
@@ -87,21 +85,21 @@ app.post('/speed', (req, res) => {
     res.json({
         success: true,
         message: 'Speed saved',
-        ip: clientIP
+        username: username
     });
 });
 
 // الصفحة الرئيسية
 app.get('/', (req, res) => {
     res.json({
-        status: 'Speed Storage API is running',
+        status: 'Speed Storage API is running (v2 - by username)',
         endpoints: {
-            'GET /speed': 'Get saved speed for your IP',
-            'POST /speed': 'Save speed {speed_id, speed_name}'
+            'GET /speed?username=XXX': 'Get saved speed for username',
+            'POST /speed': 'Save speed {username, speed_id, speed_name}'
         }
     });
 });
 
 app.listen(PORT, () => {
-    console.log(`Speed Storage API running on port ${PORT}`);
+    console.log(`Speed Storage API v2 running on port ${PORT}`);
 });
